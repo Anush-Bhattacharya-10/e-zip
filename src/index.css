@@ -1,6 +1,19 @@
-.file-item:hover {
-  text-decoration: underline;
-  color: #0d6efd;
+body {
+  background-color: #121212;
+  color: #f1f1f1;
+}
+
+.file-card {
+  background-color: #1e1e1e;
+  transition: background 0.2s;
+}
+
+.file-card:hover {
+  background-color: #2c2c2c;
+}
+
+.file-name {
+  font-size: 0.95rem;
 }
 
 summary {
@@ -10,4 +23,18 @@ summary {
 pre {
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+.btn-outline-info {
+  color: #17a2b8;
+  border-color: #17a2b8;
+}
+
+.btn-outline-info:hover {
+  background-color: #17a2b8;
+  color: #fff;
+}
+.btn-outline-danger {
+  color: #dc3545;
+  border-color: #dc3545;
 }

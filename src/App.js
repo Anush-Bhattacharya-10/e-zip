@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import {
+  FaFileAlt,
+  FaFileImage,
+  FaFileCode,
+  FaFolder,
+  FaDownload,
+} from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 export default function App() {
@@ -8,6 +15,7 @@ export default function App() {
   const [structure, setStructure] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [fileSize, setFileSize] = useState(null);
 
   // Handle ZIP upload
   const handleZipUpload = async (event) => {
@@ -17,7 +25,6 @@ export default function App() {
     const zip = await JSZip.loadAsync(file);
     const tree = {};
 
-    // Build directory tree
     Object.keys(zip.files).forEach((filename) => {
       const parts = filename.split("/");
       let current = tree;
@@ -36,92 +43,139 @@ export default function App() {
     setSelectedFile(null);
   };
 
+  // Icon by file type
+  const getFileIcon = (name, isFolder) => {
+    if (isFolder) return <FaFolder className="text-warning me-2" />;
+    if (name.match(/\.(png|jpg|jpeg|gif)$/i))
+      return <FaFileImage className="text-info me-2" />;
+    if (name.match(/\.(html|css|js|json|md)$/i))
+      return <FaFileCode className="text-success me-2" />;
+    return <FaFileAlt className="text-light me-2" />;
+  };
+
   // Handle file click
-  const handleFileClick = async (path) => {
+  const handleFileClick = async (path, name) => {
     if (!zipContent) return;
     const file = zipContent.file(path);
-    if (!file) return; // It's a folder
+    if (!file) return; // folder clicked
 
     setSelectedFile(path);
+    setFileSize((file._data.uncompressedSize / 1024).toFixed(2) + " KB");
+
     const blob = await file.async("blob");
     const textExtensions = [".txt", ".md", ".json", ".js", ".html", ".css"];
 
-    if (textExtensions.some((ext) => path.endsWith(ext))) {
+    if (textExtensions.some((ext) => name.endsWith(ext))) {
       const text = await file.async("text");
       setPreview({ type: "text", content: text });
-    } else if (path.match(/\.(png|jpg|jpeg|gif)$/i)) {
+    } else if (name.match(/\.(png|jpg|jpeg|gif)$/i)) {
       const imgUrl = URL.createObjectURL(blob);
       setPreview({ type: "image", content: imgUrl });
     } else {
-      setPreview(null);
-      const confirmDownload = window.confirm(
-        `Cannot preview "${path}". Download instead?`
-      );
-      if (confirmDownload) saveAs(blob, path.split("/").pop());
+      setPreview({ type: "unknown", content: blob });
     }
   };
 
-  // Recursive renderer
-  const renderTree = (node, path = "") => (
-    <ul className="list-unstyled ms-3">
-      {Object.entries(node).map(([name, content]) => (
-        <li key={path + name}>
-          {content ? (
-            <details>
-              <summary className="fw-semibold">{name}</summary>
-              {renderTree(content, path + name + "/")}
-            </details>
-          ) : (
-            <div
-              className="text-primary file-item"
-              role="button"
-              onClick={() => handleFileClick(path + name)}
-            >
-              📄 {name}
+  const downloadSelected = async () => {
+    if (!zipContent || !selectedFile) return;
+    const file = zipContent.file(selectedFile);
+    if (!file) return;
+    const blob = await file.async("blob");
+    saveAs(blob, selectedFile.split("/").pop());
+  };
+
+  // Render folder structure
+  const renderStructure = (node, path = "") => {
+    return (
+      <div className="ms-3">
+        {Object.entries(node).map(([name, content]) => {
+          const isFolder = content !== null;
+          return (
+            <div key={path + name} className="file-card p-2 mb-2 rounded">
+              <div
+                className="d-flex align-items-center"
+                role="button"
+                onClick={() =>
+                  isFolder ? null : handleFileClick(path + name, name)
+                }
+              >
+                {getFileIcon(name, isFolder)}
+                <span className="file-name">{name}</span>
+              </div>
+
+              {isFolder && (
+                <div className="ms-3 mt-2 border-start border-secondary ps-3">
+                  {renderStructure(content, path + name + "/")}
+                </div>
+              )}
             </div>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
-    <div className="container py-4">
-      <h1 className="mb-3 text-center">📦 ZIP File Explorer</h1>
+    <div className="bg-dark text-light min-vh-100 p-4">
+      <h1 className="text-center mb-4">📦 ZIP File Explorer</h1>
 
-      <div className="mb-4 text-center">
+      <div className="text-center mb-4">
         <input
           type="file"
           accept=".zip"
           onChange={handleZipUpload}
-          className="form-control w-50 mx-auto"
+          className="form-control w-50 mx-auto bg-secondary text-light border-0"
         />
       </div>
 
       {structure && Object.keys(structure).length > 0 && (
         <div className="row">
-          <div className="col-md-4 border-end">
-            <h5>File Explorer</h5>
-            <div className="file-tree">{renderTree(structure)}</div>
+          {/* Explorer */}
+          <div className="col-md-4 border-end border-secondary">
+            <h5>Files & Folders</h5>
+            <div className="file-tree">{renderStructure(structure)}</div>
           </div>
 
-          <div className="col-md-8">
+          {/* Preview */}
+          <div className="col-md-8 ps-4">
             <h5>Preview</h5>
             {preview ? (
-              preview.type === "text" ? (
-                <pre className="border rounded p-3 bg-light" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-                  {preview.content}
-                </pre>
-              ) : (
-                <img
-                  src={preview.content}
-                  alt={selectedFile}
-                  className="img-fluid rounded border"
-                />
-              )
+              <div className="preview-area mt-3">
+                <p className="text-muted">
+                  <strong>Selected:</strong> {selectedFile} <br />
+                  <strong>Size:</strong> {fileSize}
+                </p>
+
+                {preview.type === "text" ? (
+                  <pre
+                    className="bg-secondary p-3 rounded text-light"
+                    style={{ maxHeight: "65vh", overflowY: "auto" }}
+                  >
+                    {preview.content}
+                  </pre>
+                ) : preview.type === "image" ? (
+                  <img
+                    src={preview.content}
+                    alt={selectedFile}
+                    className="img-fluid rounded border border-secondary"
+                  />
+                ) : (
+                  <p className="text-warning">
+                    No preview available. You can download this file.
+                  </p>
+                )}
+
+                <button
+                  className="btn btn-outline-info mt-3"
+                  onClick={downloadSelected}
+                >
+                  <FaDownload className="me-2" />
+                  Download
+                </button>
+              </div>
             ) : (
-              <p className="text-muted mt-3">
-                Select a file to preview or download
+              <p className="text-secondary mt-3">
+                Select a file to preview or download.
               </p>
             )}
           </div>
