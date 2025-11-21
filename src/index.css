@@ -204,4 +204,33 @@ body {
   .search-input { min-width: 120px; }
   .preview-pdf { height: 60vh; }
 }
+
+/* Ensure the preview area takes up space */
+.preview-area {
+  flex-grow: 1; /* Make it fill the available space */
+  overflow-y: auto; /* Allow scrolling */
+  padding: 20px;
+}
+
+/* 🛑 CRITICAL FIX: Give the PDF container a defined height/dimensions */
+.preview-pdf-container {
+    width: 100%; /* Ensure it fills the parent width */
+    height: 100%; /* Ensure it fills the parent height */
+    overflow-y: auto; /* Scroll inside the PDF container if needed */
+    display: flex; /* Helps align the document */
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* Ensure the Document and Page components have space */
+.react-pdf__Document {
+    width: 100%;
+    /* Max width to prevent overly wide pages */
+    max-width: 800px; 
+}
+
+.react-pdf__Page {
+    margin-bottom: 10px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+}
 /* End of index.css */

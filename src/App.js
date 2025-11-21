@@ -14,12 +14,16 @@ import {
   FaChevronRight,
   FaChevronDown,
 } from "react-icons/fa";
+import { Document, Page, pdfjs } from 'react-pdf'; // 1. ADD: react-pdf imports
+// Alternative Fix (If the one above fails):
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
 import "./index.css";
 
-/*
-  Note: screenshot uploaded earlier:
-  /mnt/data/460a419f-39d4-4954-a9e5-9ab2d44fdda8.png
-*/
+// 4. ADD: Set up pdfjs worker (crucial for react-pdf to work)
+pdfjs.GlobalWorkerOptions.workerSrc = `../public/pdf.worker.min.js`;
+
 
 export default function App() {
   const [zipContent, setZipContent] = useState(null); // JSZip instance
@@ -29,6 +33,9 @@ export default function App() {
   const [preview, setPreview] = useState(null); // { type, data/url }
   const [fileSize, setFileSize] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // 5. ADD: State to manage the number of pages to display for PDF
+  const [pdfPages, setPdfPages] = useState(1);
 
   // ---------- ZIP UPLOAD (ZIP ONLY) ----------
   const handleZipUpload = async (e) => {
@@ -50,6 +57,7 @@ export default function App() {
       setPreview(null);
       setFileSize(null);
       setSearchQuery("");
+      setPdfPages(1); // 6. RESET PDF pages on new upload
     } catch (err) {
       console.error(err);
       alert("Failed reading zip file.");
@@ -121,12 +129,15 @@ export default function App() {
 
     setSelectedFile(fullPath);
     setFileSize((fileObj._data?.uncompressedSize ?? 0) / 1024 <= 0 ? "0 KB" : `${(fileObj._data.uncompressedSize / 1024).toFixed(2)} KB`);
+    setPdfPages(1); // 7. Reset PDF page count before previewing
 
     const blob = await fileObj.async("blob");
     const lower = name.toLowerCase();
 
     // PDF
     if (lower.endsWith(".pdf")) {
+      // 🛑 ADDED: Explicitly revoke the old URL before creating a new one
+      if (preview?.url) URL.revokeObjectURL(preview.url); 
       const url = URL.createObjectURL(blob);
       setPreview({ type: "pdf", url });
       return;
@@ -134,11 +145,12 @@ export default function App() {
 
     // Images
     if (lower.match(/\.(png|jpe?g|gif|webp|bmp)$/)) {
+       // 🛑 ADDED: Explicitly revoke the old URL before creating a new one
+       if (preview?.url) URL.revokeObjectURL(preview.url);
       const url = URL.createObjectURL(blob);
       setPreview({ type: "image", url });
       return;
     }
-
     // Text-like
     if (lower.match(/\.(txt|md|json|js|css|html|xml|csv|ts|jsx|tsx)$/)) {
       const text = await fileObj.async("text");
@@ -148,6 +160,12 @@ export default function App() {
 
     // Unknown binary
     setPreview({ type: "unknown", blob });
+  };
+
+  // 8. ADD: Handler for when PDF document loads
+  const onPdfLoadSuccess = ({ numPages }) => {
+    // Show all pages by setting pdfPages to the total count
+    setPdfPages(numPages);
   };
 
   // ---------- DOWNLOAD ----------
@@ -191,7 +209,9 @@ export default function App() {
               )}
             </>
           ) : (
-            <div className="file-row" onClick={() => previewFile(fullPath, name)}>
+            <div 
+              className={`file-row ${selectedFile === fullPath ? 'selected' : ''}`} // Added selection style
+              onClick={() => previewFile(fullPath, name)}>
               {getIconForName(name, false)}
               <div className="file-label">{name}</div>
               <div className="file-size">{sizeLabel}</div>
@@ -264,8 +284,28 @@ export default function App() {
                   <img className="preview-image" src={preview.url} alt="preview" />
                 )}
 
+                {/* 9. MODIFIED: Use react-pdf's Document and Page components */}
                 {preview.type === "pdf" && (
-                  <iframe className="preview-pdf" src={preview.url} title="PDF Preview" />
+                  <div className="preview-pdf-container">
+                    <Document 
+                      file={preview.url} 
+                      onLoadSuccess={onPdfLoadSuccess}
+                      loading={<div className="loading-pdf">Loading PDF...</div>}
+                      error={<div className="error-pdf">Failed to load PDF.</div>}
+                    >
+                      {/* Render one page for each page in the PDF */}
+                      {Array.from(new Array(pdfPages), (el, index) => (
+                        <Page 
+                          key={`page_${index + 1}`} 
+                          pageNumber={index + 1} 
+                          renderAnnotationLayer={true}
+                          renderTextLayer={true}
+                          // This ensures the PDF scales to the container width. You may need custom CSS.
+                          width={600} 
+                        />
+                      ))}
+                    </Document>
+                  </div>
                 )}
 
                 {preview.type === "unknown" && (
