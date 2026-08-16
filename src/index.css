@@ -187,7 +187,7 @@ body {
 
 /* footer */
 .footer { text-align:center; padding: 20px 0; color: var(--muted); margin-top: 22px; }
-.madeby .anush { background: linear-gradient(90deg,#00d4ff,#7b2ff7,#ff4ecd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.madeby .artemis { background: linear-gradient(90deg,#00d4ff,#7b2ff7,#ff4ecd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
 /* scrollbars */
 .tree-scroll::-webkit-scrollbar, .preview-area::-webkit-scrollbar {
