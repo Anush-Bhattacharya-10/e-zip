@@ -322,7 +322,7 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        <span className="madeby">Made by <span className="anush">Anush</span></span>
+        <span className="madeby">Made by <span className="artemis">artemis</span></span>
       </footer>
     </div>
   );
